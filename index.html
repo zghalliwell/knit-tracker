@@ -29,6 +29,10 @@
   .ver { font-size: 12px; color: var(--dim); font-weight: 500; }
   .wakebtn { width: 100%; text-align: center; padding: 14px; font-size: 15px; }
   .wakebtn b { color: var(--accent); }
+  .syncline { font-size: 12px; color: var(--dim); margin: 2px 2px 8px; text-align: center; }
+  .syncline.ok { color: #6db56d; }
+  .syncline.warn { color: #e6683c; font-weight: 700; }
+  .syncline.info { color: var(--dim); }
 
   .bar { background: var(--panel); border-radius: 10px; padding: 8px 10px; margin: 8px 0;
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -92,7 +96,8 @@
 <div id="app"></div>
 
 <script>
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.6";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxAI9rd2UJx9wp9E9qyWp5oeLWSNEhj9rgCQimB7lL5c9Vbx3NFiPmb0Dycyu-Baf7l/exec";
 
 /* ============================================================
    PATTERN DATA
@@ -3900,15 +3905,66 @@ const PATTERN = {
 };
 
 /* ============================================================
-   STORAGE LAYER
-   Saves your place in this browser's localStorage (per device).
+   STORAGE LAYER  (hybrid: instant localStorage + GAS server)
+   Every change saves to localStorage now and to your GAS web app
+   (debounced). Each save is timestamped; on load, newest wins.
    ============================================================ */
-function loadState() {
+let syncState = "", syncLevel = "info";
+function setSync(s, level) {
+  syncState = s; syncLevel = level || "info";
+  const el = document.getElementById("syncStatus");
+  if (el) { el.textContent = s; el.className = "syncline " + syncLevel; }
+}
+function serverConfigured() { return typeof GAS_URL === "string" && GAS_URL.indexOf("http") === 0; }
+function shortTime() { return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+
+function readLocal() {
   try { const s = localStorage.getItem("knitState"); return s ? JSON.parse(s) : null; }
   catch (e) { return null; }
 }
-function saveState(state) {
-  try { localStorage.setItem("knitState", JSON.stringify(state)); } catch (e) {}
+function writeLocal(obj) {
+  try { localStorage.setItem("knitState", JSON.stringify(obj)); } catch (e) {}
+}
+// Returns: an object (data), null (reachable but empty), or undefined (unreachable/unreadable).
+async function readServer() {
+  if (!serverConfigured()) return null;
+  try {
+    const r = await fetch(GAS_URL, { method: "GET" });
+    const t = (await r.text()).trim();
+    return t ? JSON.parse(t) : null;
+  } catch (e) { return undefined; }
+}
+// POST the state, then read it back and confirm the timestamp matches. The
+// read-back is the real proof GAS stored it (the POST reply is not readable
+// cross-origin, so we do not rely on it).
+async function writeServer(obj) {
+  if (!serverConfigured()) return;
+  const stamp = obj.savedAt;
+  try {
+    await fetch(GAS_URL, {
+      method: "POST", mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(obj)
+    });
+  } catch (e) {
+    setSync("SAVE FAILED - on device only", "warn");
+    return;
+  }
+  const srv = await readServer();
+  if (srv && srv.savedAt === stamp) setSync("saved " + shortTime(), "ok");
+  else if (srv === undefined) setSync("saved on device, server unconfirmed", "warn");
+  else setSync("server did not confirm the save", "warn");
+}
+
+let saveTimer = null;
+function saveState(obj) {
+  obj.savedAt = Date.now();
+  writeLocal(obj);              // instant, always
+  if (serverConfigured()) {
+    setSync("saving...", "info");
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => writeServer(obj), 1200); // debounce bursts of taps
+  }
 }
 
 /* ============================================================
@@ -3938,19 +3994,53 @@ const totalRows = flat.length;
 const sectionStarts = {};
 flat.forEach((r, i) => { if (!(r.section in sectionStarts)) sectionStarts[r.section] = i; });
 
-// state
-let state = loadState() || {
-  pos: 0,
-  stepDone: flat[0].steps.map(() => 0),
-  counters: [ { name: "Counter A", val: 0 }, { name: "Counter B", val: 0 } ],
-  wakeOn: false
-};
-if (!state.stepDone) state.stepDone = flat[state.pos].steps.map(() => 0);
-if (typeof state.wakeOn === "undefined") state.wakeOn = false;
-if (state.wakeOn) wakeState = "paused (tap a stitch)";
+// state is loaded asynchronously in boot(): compare local + server, newest wins.
+let state = null;
 let history = []; // {pos, stepIndex} in-session undo
 
+function makeDefault() {
+  return {
+    pos: 0,
+    stepDone: flat[0].steps.map(() => 0),
+    counters: [ { name: "Counter A", val: 0 }, { name: "Counter B", val: 0 } ],
+    wakeOn: false,
+    savedAt: 0
+  };
+}
+function normalize(s) {
+  if (!s) return makeDefault();
+  if (typeof s.pos !== "number" || s.pos < 0 || s.pos > totalRows) s.pos = 0;
+  if (!Array.isArray(s.stepDone)) s.stepDone = flat[s.pos].steps.map(() => 0);
+  if (!Array.isArray(s.counters)) s.counters = [ { name: "Counter A", val: 0 }, { name: "Counter B", val: 0 } ];
+  if (typeof s.wakeOn === "undefined") s.wakeOn = false;
+  if (typeof s.savedAt !== "number") s.savedAt = 0;
+  return s;
+}
+
 function persist() { saveState(state); }
+
+async function boot() {
+  const local = readLocal();
+  setSync(serverConfigured() ? "checking server..." : "on device only", "info");
+  const server = await readServer();
+  const reachable = server !== undefined;
+  const serverData = server || null;
+  const lt = (local && local.savedAt) || 0;
+  const st = (serverData && serverData.savedAt) || 0;
+  let chosen, source;
+  if (serverData && st >= lt) { chosen = serverData; source = "server"; }
+  else if (local) { chosen = local; source = "local"; }
+  else { chosen = null; source = "new"; }
+  state = normalize(chosen);
+  if (state.wakeOn) wakeState = "paused (tap a stitch)";
+  writeLocal(state); // make local match the winner
+  render();
+  if (serverConfigured()) {
+    if (!reachable) setSync("server unreachable - using device copy", "warn");
+    else if (source === "server") setSync("synced " + shortTime(), "ok");
+    else saveState(state); // push local/new up, with confirmation
+  }
+}
 
 function rowComplete() {
   const row = flat[state.pos];
@@ -4111,6 +4201,7 @@ function render() {
       <span class="meta">${escapeHtml(PATTERN.meta.needles || "")}</span>
     </header>
     <div class="bar"><button class="btn wakebtn" onclick="toggleWake()">Keep screen awake: <b id="wakeStatus">${escapeHtml(wakeState)}</b></button></div>
+    <div class="syncline ${syncLevel}" id="syncStatus">${escapeHtml(syncState)}</div>
 
     <div class="bar">
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
@@ -4205,7 +4296,7 @@ function escapeHtml(str) {
   }[c]));
 }
 
-render();
+boot();
 </script>
 </body>
 </html>
