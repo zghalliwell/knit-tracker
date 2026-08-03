@@ -27,7 +27,8 @@
   header h1 { font-size: 17px; margin: 0; font-weight: 600; }
   .meta { font-size: 12px; color: var(--dim); }
   .ver { font-size: 12px; color: var(--dim); font-weight: 500; }
-  .wakeline { font-size: 12px; color: var(--dim); margin: 0 2px 8px; }
+  .wakebtn { width: 100%; text-align: center; padding: 14px; font-size: 15px; }
+  .wakebtn b { color: var(--accent); }
 
   .bar { background: var(--panel); border-radius: 10px; padding: 8px 10px; margin: 8px 0;
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -91,7 +92,7 @@
 <div id="app"></div>
 
 <script>
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.4";
 
 /* ============================================================
    PATTERN DATA
@@ -3941,9 +3942,12 @@ flat.forEach((r, i) => { if (!(r.section in sectionStarts)) sectionStarts[r.sect
 let state = loadState() || {
   pos: 0,
   stepDone: flat[0].steps.map(() => 0),
-  counters: [ { name: "Counter A", val: 0 }, { name: "Counter B", val: 0 } ]
+  counters: [ { name: "Counter A", val: 0 }, { name: "Counter B", val: 0 } ],
+  wakeOn: false
 };
 if (!state.stepDone) state.stepDone = flat[state.pos].steps.map(() => 0);
+if (typeof state.wakeOn === "undefined") state.wakeOn = false;
+if (state.wakeOn) wakeState = "paused (tap a stitch)";
 let history = []; // {pos, stepIndex} in-session undo
 
 function persist() { saveState(state); }
@@ -3960,6 +3964,7 @@ function tapStep(i) {
   history.push({ pos: state.pos, stepIndex: i });
   if (rowComplete()) advance();
   persist(); render();
+  if (state.wakeOn && !wakeActive) keepAwake(); // stitch tap carries activation
 }
 
 function advance() {
@@ -4024,35 +4029,47 @@ function makeWakeVideo() {
   wakeVideo = v; return v;
 }
 
-// Wake Lock API first; if it is rejected, fall back to a muted looping video.
-// The status line reports the exact lock rejection so the cause is visible.
+// The wake lock must be requested from a direct element tap (button click or a
+// stitch tap), which is what iOS accepts as user activation. It is never called
+// from a passive document listener.
 async function keepAwake() {
-  if (wakeActive) {
-    if (wakeVideo && wakeVideo.paused) { try { await wakeVideo.play(); } catch (e) {} }
-    return;
-  }
+  if (wakeActive) return;
   let lockErr = null;
   try {
     if ("wakeLock" in navigator) {
       wakeLock = await navigator.wakeLock.request("screen");
-      wakeActive = true; setWake("on (lock)");
-      wakeLock.addEventListener("release", () => { wakeActive = false; setWake("off (released)"); });
+      wakeActive = true; setWake("on");
+      wakeLock.addEventListener("release", () => {
+        wakeActive = false;
+        setWake((state && state.wakeOn) ? "paused (tap a stitch)" : "off");
+      });
       return;
-    } else {
-      lockErr = "no wakeLock API";
-    }
+    } else { lockErr = "no wakeLock API"; }
   } catch (e) { lockErr = (e && e.name) ? e.name : String(e); }
-  try {
-    await makeWakeVideo().play();
-    wakeActive = true; setWake("video (lock: " + lockErr + ")");
-  } catch (e) { setWake("blocked (lock: " + lockErr + ")"); }
+  // Last-resort fallback (unreliable on modern iOS).
+  try { await makeWakeVideo().play(); wakeActive = true; setWake("on (video; lock: " + lockErr + ")"); }
+  catch (e) { setWake("blocked (lock: " + lockErr + ")"); }
 }
 
+function releaseWake() {
+  try { if (wakeLock) wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+  if (wakeVideo) { try { wakeVideo.pause(); } catch (e) {} }
+  wakeActive = false;
+  setWake("off");
+}
+
+function toggleWake() {
+  state.wakeOn = !state.wakeOn;
+  persist();
+  if (state.wakeOn) keepAwake(); else releaseWake();
+}
+
+// Returning to the app releases the lock; re-acquire if the user wants it on.
+// If this needs a fresh tap, the status says "paused (tap a stitch)".
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") keepAwake();
+  if (document.visibilityState === "visible" && state && state.wakeOn && !wakeActive) keepAwake();
 });
-// First tap anywhere satisfies the iOS user-gesture requirement.
-document.addEventListener("pointerdown", keepAwake);
 
 /* ============================================================
    RENDER
@@ -4093,7 +4110,7 @@ function render() {
       <h1>${escapeHtml(PATTERN.project)} <span class="ver">v${APP_VERSION}</span></h1>
       <span class="meta">${escapeHtml(PATTERN.meta.needles || "")}</span>
     </header>
-    <div class="wakeline">Keep awake: <span id="wakeStatus">${escapeHtml(wakeState)}</span></div>
+    <div class="bar"><button class="btn wakebtn" onclick="toggleWake()">Keep screen awake: <b id="wakeStatus">${escapeHtml(wakeState)}</b></button></div>
 
     <div class="bar">
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
