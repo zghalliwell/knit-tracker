@@ -96,7 +96,7 @@
 <div id="app"></div>
 
 <script>
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.7";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxAI9rd2UJx9wp9E9qyWp5oeLWSNEhj9rgCQimB7lL5c9Vbx3NFiPmb0Dycyu-Baf7l/exec";
 
 /* ============================================================
@@ -4171,8 +4171,9 @@ function render() {
   const row = flat[state.pos];
   const pct = Math.round((state.pos / totalRows) * 100);
 
+  const curSection = flat[state.pos].section;
   const sectionOptions = Object.keys(sectionStarts)
-    .map(n => `<option value="${sectionStarts[n]}">${n}</option>`).join("");
+    .map(n => `<option value="${sectionStarts[n]}" ${n === curSection ? "selected" : ""}>${n}</option>`).join("");
 
   const stepsHtml = row.steps.map((s, i) => {
     const done = state.stepDone[i] >= s.times;
@@ -4212,6 +4213,7 @@ function render() {
       <span class="prog-label">Jump to</span>
       <select onchange="jumpTo(parseInt(this.value))">${sectionOptions}</select>
       <button class="btn" onclick="resetSection()">Reset section</button>
+      <button class="btn" onclick="fullReset()">Start over</button>
     </div>
 
     <div class="section-tag">${escapeHtml(row.section)}</div>
@@ -4243,6 +4245,15 @@ function render() {
 function resetSection() {
   const start = sectionStarts[flat[state.pos].section];
   jumpTo(start);
+}
+
+function fullReset() {
+  if (!confirm("Start over from the cast on? This clears every checkmark and sets both counters to zero.")) return;
+  state.pos = 0;
+  state.stepDone = flat[0].steps.map(() => 0);
+  state.counters = state.counters.map(c => ({ name: c.name, val: 0 }));
+  history = [];
+  persist(); render();
 }
 
 function renderDone() {
