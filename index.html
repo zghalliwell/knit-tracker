@@ -1,0 +1,4191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Knit Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root {
+    --bg: #1c1a17;
+    --panel: #2a2724;
+    --panel2: #34302b;
+    --ink: #efe9e0;
+    --dim: #a99f92;
+    --accent: #d9a441;
+    --done: #4c7a4c;
+    --line: #423d37;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, system-ui, sans-serif; overscroll-behavior: none; }
+  #app { max-width: 620px; margin: 0 auto; padding: 12px 12px 40px; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .meta { font-size: 12px; color: var(--dim); }
+  .ver { font-size: 12px; color: var(--dim); font-weight: 500; }
+  .wakeline { font-size: 12px; color: var(--dim); margin: 0 2px 8px; }
+
+  .bar { background: var(--panel); border-radius: 10px; padding: 8px 10px; margin: 8px 0;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .prog-track { flex: 1; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; min-width: 120px; }
+  .prog-fill { height: 100%; background: var(--accent); width: 0%; transition: width .2s; }
+  .prog-label { font-size: 12px; color: var(--dim); white-space: nowrap; }
+
+  select, .btn {
+    background: var(--panel2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; }
+  .btn:active { background: var(--line); }
+
+  .section-tag { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin: 14px 2px 4px; }
+
+  .rowcard { background: var(--panel); border-radius: 14px; padding: 14px; }
+  .rowhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .rowhead .label { font-size: 20px; font-weight: 700; }
+  .rowhead .count { font-size: 13px; color: var(--dim); }
+  .rep-flag { font-size: 12px; color: var(--accent); }
+  .color-strip { display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    font-size: 16px; font-weight: 700; background: var(--panel2); border-radius: 12px; padding: 12px 14px; }
+  .color-strip .dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); flex: none; }
+
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step {
+    background: var(--panel2); border: 1px solid var(--line); border-radius: 16px;
+    padding: 18px 20px; min-height: 88px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    cursor: pointer; user-select: none; position: relative; text-align: center; }
+  .step:active { transform: scale(.98); }
+  .step.done { background: var(--done); border-color: var(--done); color: #eafaea; }
+  .step .main { display: flex; align-items: center; gap: 12px; font-size: 25px; font-weight: 600; }
+  .step .plain { font-size: 14px; font-weight: 400; opacity: .68; }
+  .step .cnt { font-size: 20px; font-weight: 700; background: rgba(0,0,0,.28); border-radius: 24px; padding: 4px 14px; }
+  .step.group.done .cnt { background: rgba(0,0,0,.2); }
+
+  .note { margin-top: 12px; font-size: 13px; color: var(--dim); background: var(--panel2);
+    border-radius: 8px; padding: 8px 10px; }
+
+  .controls { display: flex; gap: 10px; margin: 14px 0; }
+  .controls .btn { flex: 1; text-align: center; padding: 22px; font-size: 19px; font-weight: 600; border-radius: 14px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #201a0d; font-weight: 700; }
+
+  .peek { background: var(--panel); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--dim); margin: 8px 0; }
+  .peek b { color: var(--ink); font-weight: 600; }
+
+  .counters { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+  .counter { background: var(--panel); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 14px; }
+  .counter .cname { font-size: 15px; color: var(--dim); flex: 1; }
+  .counter .cval { font-size: 30px; font-weight: 800; min-width: 48px; text-align: center; }
+  .counter .cbtn { width: 68px; height: 68px; border-radius: 16px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--ink); font-size: 34px; line-height: 1; }
+  .counter .cbtn:active { background: var(--line); }
+
+  .done-screen { text-align: center; padding: 40px 10px; }
+  .done-screen h2 { color: var(--accent); }
+  .small { font-size: 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const APP_VERSION = "1.2";
+
+/* ============================================================
+   PATTERN DATA
+   Replace PATTERN with the JSON generated for each new project.
+   ============================================================ */
+const PATTERN = {
+  "project": "Daybreak (Large)",
+  "meta": {
+    "yarn": "Fingering weight. A = dark green, B = grey",
+    "needles": "US 4 / 3.5mm circular, 40in",
+    "gauge": "22 sts x 34 rows = 4in in stockinette, blocked",
+    "notes": "Stephen West / Westknits. Large, two-color. 8 stitch markers, tapestry needle."
+  },
+  "sections": [
+    {
+      "name": "Setup",
+      "rows": [
+        {
+          "label": "Garter Tab Cast On",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "CO 3 sts",
+            "K 6 rows",
+            "Rotate 90 deg clockwise",
+            "Pick up & knit 3 sts (1 per garter ridge)",
+            "Rotate 90 deg",
+            "Pick up & knit 3 sts along CO edge"
+          ],
+          "count": 9,
+          "note": "Using A. No row label in the PDF; this is the garter tab cast-on paragraph."
+        },
+        {
+          "label": "Set Up Row 1 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p3",
+            "M1R",
+            "k3"
+          ],
+          "count": 11
+        },
+        {
+          "label": "Set Up Row 2 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k2",
+            "pm",
+            "k1",
+            "pm",
+            "k2",
+            "M1R",
+            "k3"
+          ],
+          "count": 13,
+          "note": "Slip the stitch markers onto the right needle whenever you reach them, from here on."
+        },
+        {
+          "label": "Set Up Row 3 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p7",
+            "M1R",
+            "k3"
+          ],
+          "count": 15
+        }
+      ]
+    },
+    {
+      "name": "Section 1 - Solid",
+      "rows": [
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k2, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k2",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 21
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 23
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 25
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 27
+        },
+        {
+          "label": "Row 5 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k5, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k5",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 33
+        },
+        {
+          "label": "Row 6 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 35
+        },
+        {
+          "label": "Row 7 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 37
+        },
+        {
+          "label": "Row 8 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 39
+        },
+        {
+          "label": "Row 9 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k8, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k8",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 45
+        },
+        {
+          "label": "Row 10 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 47
+        },
+        {
+          "label": "Row 11 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 49
+        },
+        {
+          "label": "Row 12 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 51
+        },
+        {
+          "label": "Row 13 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k11, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k11",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 57
+        },
+        {
+          "label": "Row 14 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 59
+        },
+        {
+          "label": "Row 15 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 61
+        },
+        {
+          "label": "Row 16 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 63
+        },
+        {
+          "label": "Row 17 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k14, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k14",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 69
+        },
+        {
+          "label": "Row 18 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 71
+        },
+        {
+          "label": "Row 19 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 73
+        },
+        {
+          "label": "Row 20 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 75
+        },
+        {
+          "label": "Row 21 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k17, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k17",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 81
+        },
+        {
+          "label": "Row 22 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 83
+        },
+        {
+          "label": "Row 23 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 85
+        },
+        {
+          "label": "Row 24 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 87
+        },
+        {
+          "label": "Row 25 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k20, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k20",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 93
+        },
+        {
+          "label": "Row 26 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 95
+        },
+        {
+          "label": "Row 27 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 97
+        },
+        {
+          "label": "Row 28 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 99
+        },
+        {
+          "label": "Row 29 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k23, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k23",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 105
+        },
+        {
+          "label": "Row 30 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 107
+        },
+        {
+          "label": "Row 31 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 109
+        },
+        {
+          "label": "Row 32 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 111
+        },
+        {
+          "label": "Row 33 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k26, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k26",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 117
+        },
+        {
+          "label": "Row 34 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 119
+        },
+        {
+          "label": "Row 35 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 121
+        },
+        {
+          "label": "Row 36 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 123
+        },
+        {
+          "label": "Row 37 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k29, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k29",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 129
+        },
+        {
+          "label": "Row 38 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 131
+        },
+        {
+          "label": "Row 39 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 133
+        },
+        {
+          "label": "Row 40 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 135
+        },
+        {
+          "label": "Row 41 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k32, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k32",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 141
+        },
+        {
+          "label": "Row 42 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 143
+        },
+        {
+          "label": "Row 43 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 145
+        },
+        {
+          "label": "Row 44 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 147
+        },
+        {
+          "label": "Row 45 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k35, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k35",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 153
+        },
+        {
+          "label": "Row 46 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 155
+        },
+        {
+          "label": "Row 47 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 157
+        },
+        {
+          "label": "Row 48 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 159
+        },
+        {
+          "label": "Row 49 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k38, M1R",
+              "times": 2
+            },
+            "slm",
+            "k1",
+            "slm",
+            {
+              "group": "M1L, k38",
+              "times": 2
+            },
+            "M1R",
+            "k3"
+          ],
+          "count": 165
+        },
+        {
+          "label": "Row 50 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 167
+        },
+        {
+          "label": "Row 51 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 169
+        },
+        {
+          "label": "Row 52 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 171
+        }
+      ]
+    },
+    {
+      "name": "Section 2 - Stripes",
+      "rows": [
+        {
+          "label": "Setup Row 1 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k1",
+            "pm",
+            "sl1 wyib",
+            "k26",
+            "M1R",
+            "pm",
+            "sl1 wyib",
+            "k26",
+            "M1R",
+            "pm",
+            "sl1 wyib",
+            "k26",
+            "M1R",
+            "slm",
+            "sl1 wyib",
+            "slm",
+            "M1L",
+            "k26",
+            "sl1 wyib",
+            "pm",
+            "M1L",
+            "k26",
+            "sl1 wyib",
+            "pm",
+            "M1L",
+            "k26",
+            "sl1 wyib",
+            "pm",
+            "k1",
+            "M1R",
+            "k3"
+          ],
+          "count": 179,
+          "note": "Switch to B. On WS rows, slip markers and slip the slip sts wyif as you reach them."
+        },
+        {
+          "label": "Setup Row 2 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 181,
+          "note": "Never place an increase right next to the first or last slipped stitch of a row."
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 183,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 1,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 185,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 1,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 193,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 1,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 195,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 1,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 197,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 2,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 199,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 2,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 207,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 2,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 209,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 2,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 211,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 3,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 213,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 3,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 221,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 3,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 223,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 3,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 225,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 4,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 227,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 4,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 235,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 4,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 237,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 4,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 239,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 5,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 241,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 5,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 249,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 5,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 251,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 5,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 253,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 6,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 255,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 6,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 263,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 6,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 265,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 6,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 267,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 7,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 269,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 7,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 277,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 7,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 279,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 7,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 281,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 8,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 283,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 8,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 291,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 8,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 293,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 8,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 295,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 9,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 297,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 9,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 305,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 9,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 307,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 9,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 309,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 10,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 311,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 10,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 319,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 10,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 321,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 10,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 323,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 11,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 325,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 11,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 333,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 11,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 335,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 11,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 337,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 12,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 339,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 12,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 347,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 12,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 349,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 12,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 351,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 13,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 353,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 13,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 361,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 13,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 363,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 13,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 365,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 14,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 367,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 14,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 375,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 14,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 377,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 14,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 379,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 15,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 381,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 15,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 389,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 15,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 391,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 15,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 393,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 16,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 395,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 16,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 403,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 16,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 405,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 16,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 407,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 17,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 409,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 17,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 417,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 17,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 419,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 17,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 421,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 18,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 423,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 18,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 431,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 18,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 433,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 18,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 435,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 19,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 437,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 19,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 445,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 19,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 447,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 19,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 449,
+          "note": "Switch to A.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 20,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 451,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 20,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to first m",
+            "slm",
+            "sl1 wyib",
+            {
+              "group": "k to m, M1R, slm, sl1 wyib",
+              "times": 3
+            },
+            "slm",
+            "M1L",
+            {
+              "group": "k to one st before m, sl1 wyib, slm, M1L",
+              "times": 2
+            },
+            "k to one st before m",
+            "sl1 wyib",
+            "slm",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 459,
+          "note": "Switch to B.",
+          "rep": {
+            "label": "Stripe rep",
+            "i": 20,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts (slm, slip slip-sts wyif)",
+            "M1R",
+            "k3"
+          ],
+          "count": 461,
+          "rep": {
+            "label": "Stripe rep",
+            "i": 20,
+            "total": 20
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "k3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 463,
+          "note": "Pattern Repeat Rows 1 & 2 worked once more with A. Switch to A."
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "A",
+            "name": "Dark green",
+            "hex": "#2f5d3a"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 465,
+          "note": "Break color A after this row."
+        }
+      ]
+    },
+    {
+      "name": "Section 3 - Border",
+      "rows": [
+        {
+          "label": "Setup Row 1 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to first m",
+            "remove m",
+            {
+              "group": "k to m, M1R, slm",
+              "times": 3
+            },
+            "k1",
+            "slm",
+            "M1L",
+            {
+              "group": "k to m, slm, M1L",
+              "times": 2
+            },
+            "k to next m",
+            "remove m",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 473,
+          "note": "Border worked in B. Remove only the first and last marker in this row; keep and slip the rest."
+        },
+        {
+          "label": "Setup Row 2 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 475
+        },
+        {
+          "label": "Setup Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 477
+        },
+        {
+          "label": "Setup Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 479,
+          "note": "Knit on the WS row (garter ridge)."
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 481,
+          "rep": {
+            "label": "Border rep",
+            "i": 1,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 483,
+          "rep": {
+            "label": "Border rep",
+            "i": 1,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k to m, M1R, slm",
+              "times": 3
+            },
+            "k1",
+            "slm",
+            "M1L",
+            {
+              "group": "k to m, slm, M1L",
+              "times": 2
+            },
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 491,
+          "rep": {
+            "label": "Border rep",
+            "i": 1,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 493,
+          "note": "Knit on the WS row.",
+          "rep": {
+            "label": "Border rep",
+            "i": 1,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 495,
+          "rep": {
+            "label": "Border rep",
+            "i": 2,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 497,
+          "rep": {
+            "label": "Border rep",
+            "i": 2,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k to m, M1R, slm",
+              "times": 3
+            },
+            "k1",
+            "slm",
+            "M1L",
+            {
+              "group": "k to m, slm, M1L",
+              "times": 2
+            },
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 505,
+          "rep": {
+            "label": "Border rep",
+            "i": 2,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 507,
+          "note": "Knit on the WS row.",
+          "rep": {
+            "label": "Border rep",
+            "i": 2,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 509,
+          "rep": {
+            "label": "Border rep",
+            "i": 3,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 511,
+          "rep": {
+            "label": "Border rep",
+            "i": 3,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k to m, M1R, slm",
+              "times": 3
+            },
+            "k1",
+            "slm",
+            "M1L",
+            {
+              "group": "k to m, slm, M1L",
+              "times": 2
+            },
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 519,
+          "rep": {
+            "label": "Border rep",
+            "i": 3,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 521,
+          "note": "Knit on the WS row.",
+          "rep": {
+            "label": "Border rep",
+            "i": 3,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 523,
+          "rep": {
+            "label": "Border rep",
+            "i": 4,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 525,
+          "rep": {
+            "label": "Border rep",
+            "i": 4,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k to m, M1R, slm",
+              "times": 3
+            },
+            "k1",
+            "slm",
+            "M1L",
+            {
+              "group": "k to m, slm, M1L",
+              "times": 2
+            },
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 533,
+          "rep": {
+            "label": "Border rep",
+            "i": 4,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 535,
+          "note": "Knit on the WS row.",
+          "rep": {
+            "label": "Border rep",
+            "i": 4,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 1 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 537,
+          "rep": {
+            "label": "Border rep",
+            "i": 5,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 2 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "p to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 539,
+          "rep": {
+            "label": "Border rep",
+            "i": 5,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 3 (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            {
+              "group": "k to m, M1R, slm",
+              "times": 3
+            },
+            "k1",
+            "slm",
+            "M1L",
+            {
+              "group": "k to m, slm, M1L",
+              "times": 2
+            },
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 547,
+          "rep": {
+            "label": "Border rep",
+            "i": 5,
+            "total": 5
+          }
+        },
+        {
+          "label": "Row 4 (WS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 549,
+          "note": "Knit on the WS row.",
+          "rep": {
+            "label": "Border rep",
+            "i": 5,
+            "total": 5
+          }
+        },
+        {
+          "label": "Next Row (RS)",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "K3",
+            "M1L",
+            "k to last 3 sts",
+            "M1R",
+            "k3"
+          ],
+          "count": 551
+        }
+      ]
+    },
+    {
+      "name": "Finishing",
+      "rows": [
+        {
+          "label": "I-cord BO",
+          "color": {
+            "tag": "B",
+            "name": "Grey",
+            "hex": "#9aa0a6"
+          },
+          "steps": [
+            "CO 3 sts to left needle (cable cast on)",
+            {
+              "group": "k2, k2tog tbl, sl 3 sts back to left needle",
+              "times": 1
+            },
+            "Repeat the group to end of row",
+            "Break yarn, pull through last 3 sts"
+          ],
+          "note": "I-cord BO in B. The middle step repeats to the end of the row (count varies). Then weave in ends and wet block."
+        }
+      ]
+    }
+  ]
+};
+
+/* ============================================================
+   STORAGE LAYER
+   Saves your place in this browser's localStorage (per device).
+   ============================================================ */
+function loadState() {
+  try { const s = localStorage.getItem("knitState"); return s ? JSON.parse(s) : null; }
+  catch (e) { return null; }
+}
+function saveState(state) {
+  try { localStorage.setItem("knitState", JSON.stringify(state)); } catch (e) {}
+}
+
+/* ============================================================
+   ENGINE
+   ============================================================ */
+// Flatten sections -> ordered list of rows, expanding row-level
+// repeats is handled at JSON-gen time, so here we just flatten.
+const flat = [];
+PATTERN.sections.forEach(sec => {
+  sec.rows.forEach(r => {
+    flat.push({
+      section: sec.name,
+      label: r.label,
+      note: r.note || null,
+      count: (r.count !== undefined) ? r.count : null,
+      rep: r.rep || null, // {label, i, total} optional display tag
+      color: r.color || null, // {tag, name, hex} optional
+      steps: r.steps.map(s => typeof s === "string"
+        ? { text: s, times: 1 }
+        : { text: s.group, times: s.times || 1, group: true })
+    });
+  });
+});
+const totalRows = flat.length;
+
+// section start indices for the jump menu
+const sectionStarts = {};
+flat.forEach((r, i) => { if (!(r.section in sectionStarts)) sectionStarts[r.section] = i; });
+
+// state
+let state = loadState() || {
+  pos: 0,
+  stepDone: flat[0].steps.map(() => 0),
+  counters: [ { name: "Counter A", val: 0 }, { name: "Counter B", val: 0 } ]
+};
+if (!state.stepDone) state.stepDone = flat[state.pos].steps.map(() => 0);
+let history = []; // {pos, stepIndex} in-session undo
+
+function persist() { saveState(state); }
+
+function rowComplete() {
+  const row = flat[state.pos];
+  return row.steps.every((s, i) => state.stepDone[i] >= s.times);
+}
+
+function tapStep(i) {
+  const row = flat[state.pos];
+  if (state.stepDone[i] >= row.steps[i].times) return;
+  state.stepDone[i]++;
+  history.push({ pos: state.pos, stepIndex: i });
+  if (rowComplete()) advance();
+  persist(); render();
+}
+
+function advance() {
+  if (state.pos < totalRows - 1) {
+    state.pos++;
+    state.stepDone = flat[state.pos].steps.map(() => 0);
+  } else {
+    state.pos = totalRows; // done sentinel
+  }
+}
+
+function undo() {
+  const last = history.pop();
+  if (!last) return;
+  if (last.pos !== state.pos) {
+    // we had advanced past that row; step back and restore it as full
+    state.pos = last.pos;
+    state.stepDone = flat[state.pos].steps.map(s => s.times);
+  }
+  if (state.stepDone[last.stepIndex] > 0) state.stepDone[last.stepIndex]--;
+  persist(); render();
+}
+
+function jumpTo(idx) {
+  state.pos = idx;
+  state.stepDone = flat[idx].steps.map(() => 0);
+  history = [];
+  persist(); render();
+}
+
+function bumpCounter(i, d) {
+  state.counters[i].val = Math.max(0, state.counters[i].val + d);
+  persist(); render();
+}
+
+/* ============================================================
+   WAKE LOCK
+   ============================================================ */
+const WAKE_WEBM = "data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAPgEU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggPK7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECPQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYjUD7xOH49OAJyBACK1nIN1bmSIgQCGhVZfVlA5g4EBI+ODhAJiWgDgibCBQLqBQJqBAhJUw2dAgHNzoGPAgGfImkWjh0VOQ09ERVJEh41MYXZmNjAuMTYuMTAwc3PaY8CLY8WI1A+8Th+PTgBnyKVFo4dFTkNPREVSRIeYTGF2YzYwLjMxLjEwMiBsaWJ2cHgtdnA5Z8ihRaOIRFVSQVRJT05Eh5MwMDowMDowMS4wMDAwMDAwMDAAH0O2dUIg54EAo6OBAACAgkmDQgAD8AP2ADgkHBhCAAAwYAAAZz///1mvETuzAKOTgQAoAIYAQJKcAElAAAMgAABUcKOTgQBQAIYAQJKcAErAAAMgAABUcKOTgQB4AIYAQJKcAEnAAAMgAABUcKOTgQCgAIYAQJKcAEigAAMgAABUcKOTgQDIAIYAQJKcAEeAAAMgAABUcKOTgQDwAIYAQJKcAEbgAAMgAABUcKOTgQEYAIYAQJKcAEZAAAMgAABUcKOTgQFAAIYAQJKcAEXAAAMgAABUcKOTgQFoAIYAQJKcAEVAAAMgAABUcKOTgQGQAIYAwJKcAEHAAAMgAABUcKOTgQG4AIYAQJKcAETgAAMgAABUcKOTgQHgAIYAQJKcAERgAAMgAABUcKOTgQIIAIYAQJKcAEQAAAMgAABUcKOTgQIwAIYAQJKcAEOgAAMgAABUcKOTgQJYAIYAQJKcAENAAAMgAABUcKOTgQKAAIYAQJKcAEMAAAMgAABUcKOTgQKoAIYAQJKcAELAAAMgAABUcKOTgQLQAIYAQJKcAEKAAAMgAABUcKOTgQL4AIYAQJKcAEJAAAMgAABUcKOTgQMgAIYAwJKcAEAgAAMgAABUcKOTgQNIAIYAQJKcAEIAAAMgAABUcKOTgQNwAIYAQJKcAEHgAAMgAABUcKOTgQOYAIYAQJKcAEHAAAMgAABUcKOTgQPAAIYAQJKcAEGAAAMgAABUcBxTu2uRu4+zgQC3iveBAfGCAaTwgQM=";
+const WAKE_MP4 = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAOIbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAA+gAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAArJ0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAA+gAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAEAAAABAAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAPoAAAAAAABAAAAAAIqbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAAAyAAAAMgBVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAAB1W1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAZVzdGJsAAAAuXN0c2QAAAAAAAAAAQAAAKlhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAEAAQABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAAL2F2Y0MBQsAe/+EAF2dCwB7ZBCbARAAAAwAEAAADAMg8WLkgAQAFaMuDyyAAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAb+AAAG/gAAAAYc3R0cwAAAAAAAAABAAAAGQAAAgAAAAAUc3RzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAAGQAAAAEAAAB4c3RzegAAAAAAAAAAAAAAGQAAAo8AAAAKAAAACgAAAAoAAAAKAAAACgAAAAoAAAAKAAAACgAAAAoAAAAKAAAACgAAAAoAAAAKAAAACgAAAAoAAAAKAAAACgAAAAoAAAAKAAAACgAAAAoAAAAKAAAACgAAAAoAAAAUc3RjbwAAAAAAAAABAAADuAAAAGJ1ZHRhAAAAWm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALWlsc3QAAAAlqXRvbwAAAB1kYXRhAAAAAQAAAABMYXZmNjAuMTYuMTAwAAAACGZyZWUAAAOHbWRhdAAAAnEGBf//bdxF6b3m2Ui3lizYINkj7u94MjY0IC0gY29yZSAxNjQgcjMxMDggMzFlMTlmOSAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjMgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0wIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDE6MHgxMTEgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBtaXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cmVsbGlzPTEgOHg4ZGN0PTAgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNocm9tYV9xcF9vZmZzZXQ9LTIgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MCB3ZWlnaHRwPTAga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAFmWIhAzyYoAAsLycnJ1111111111114AAAAGQZo4GeEYAAAABkGaVAZ4RgAAAAZBmmAzwjAAAAAGQZqAM8IwAAAABkGaoDPCMAAAAAZBmsAzwjAAAAAGQZrgM8IwAAAABkGbADPCMAAAAAZBmyAzwjAAAAAGQZtAM8IwAAAABkGbYDPCMAAAAAZBm4AzwjAAAAAGQZugM8IwAAAABkGbwDPCMAAAAAZBm+AzwjAAAAAGQZoAM8IwAAAABkGaIDPCMAAAAAZBmkAzwjAAAAAGQZpgM8IwAAAABkGagDPCMAAAAAZBmqAzwjAAAAAGQZrAL8IwAAAABkGa4C/CMAAAAAZBmwArwjA=";
+let wakeLock = null, wakeVideo = null, wakeActive = false, wakeState = "off";
+
+function setWake(s) {
+  wakeState = s;
+  const el = document.getElementById("wakeStatus");
+  if (el) el.textContent = s;
+}
+
+function makeWakeVideo() {
+  if (wakeVideo) return wakeVideo;
+  const v = document.createElement("video");
+  v.muted = true; v.defaultMuted = true; v.loop = true;
+  v.setAttribute("muted", ""); v.setAttribute("playsinline", "");
+  v.setAttribute("loop", ""); v.setAttribute("autoplay", "");
+  v.style.cssText = "position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;";
+  // iOS plays the mp4 (H.264); list it first.
+  const a = document.createElement("source"); a.src = WAKE_MP4; a.type = "video/mp4";
+  const b = document.createElement("source"); b.src = WAKE_WEBM; b.type = "video/webm";
+  v.appendChild(a); v.appendChild(b);
+  v.addEventListener("timeupdate", () => { if (v.currentTime > 0.5) v.currentTime = 0; });
+  document.body.appendChild(v);
+  wakeVideo = v; return v;
+}
+
+// Wake Lock API if the browser allows it, else a muted looping video
+// (the Apps Script iframe blocks the Wake Lock API, so the video is the real path).
+async function keepAwake() {
+  if (wakeActive) {
+    if (wakeVideo && wakeVideo.paused) { try { await wakeVideo.play(); } catch (e) {} }
+    return;
+  }
+  try {
+    if ("wakeLock" in navigator) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeActive = true; setWake("on (lock)");
+      wakeLock.addEventListener("release", () => { wakeActive = false; setWake("off"); });
+      return;
+    }
+  } catch (e) { setWake("lock blocked, using video"); }
+  try {
+    await makeWakeVideo().play();
+    wakeActive = true; setWake("on (video)");
+  } catch (e) { setWake("blocked: tap again"); }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") keepAwake();
+});
+// First tap anywhere satisfies the iOS user-gesture requirement.
+document.addEventListener("pointerdown", keepAwake);
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const app = document.getElementById("app");
+
+function render() {
+  if (state.pos >= totalRows) { renderDone(); return; }
+  const row = flat[state.pos];
+  const pct = Math.round((state.pos / totalRows) * 100);
+
+  const sectionOptions = Object.keys(sectionStarts)
+    .map(n => `<option value="${sectionStarts[n]}">${n}</option>`).join("");
+
+  const stepsHtml = row.steps.map((s, i) => {
+    const done = state.stepDone[i] >= s.times;
+    const counter = s.times > 1 ? `<span class="cnt">${state.stepDone[i]}/${s.times}</span>` : "";
+    const pl = plain(s.text);
+    const plainLine = (pl !== s.text) ? `<span class="plain">${escapeHtml(pl)}</span>` : "";
+    return `<div class="step ${s.group ? "group" : ""} ${done ? "done" : ""}" onclick="tapStep(${i})">
+      <span class="main">${escapeHtml(s.text)}${counter}</span>${plainLine}</div>`;
+  }).join("");
+
+  const next = flat[state.pos + 1];
+  const peekHtml = next ? `<div class="peek">Next: <b>${escapeHtml(next.label)}</b> &nbsp;
+    ${next.steps.map(s => escapeHtml(typeof s.text === "string" ? s.text : "")).join(", ")}</div>` : "";
+
+  const countersHtml = state.counters.map((c, i) => `
+    <div class="counter">
+      <span class="cname">${escapeHtml(c.name)}</span>
+      <button class="cbtn" onclick="bumpCounter(${i},-1)">-</button>
+      <span class="cval">${c.val}</span>
+      <button class="cbtn" onclick="bumpCounter(${i},1)">+</button>
+    </div>`).join("");
+
+  app.innerHTML = `
+    <header>
+      <h1>${escapeHtml(PATTERN.project)} <span class="ver">v${APP_VERSION}</span></h1>
+      <span class="meta">${escapeHtml(PATTERN.meta.needles || "")}</span>
+    </header>
+    <div class="wakeline">Keep awake: <span id="wakeStatus">${escapeHtml(wakeState)}</span></div>
+
+    <div class="bar">
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+      <span class="prog-label">Row ${state.pos + 1} of ${totalRows} &middot; ${pct}%</span>
+    </div>
+
+    <div class="bar">
+      <span class="prog-label">Jump to</span>
+      <select onchange="jumpTo(parseInt(this.value))">${sectionOptions}</select>
+      <button class="btn" onclick="resetSection()">Reset section</button>
+    </div>
+
+    <div class="section-tag">${escapeHtml(row.section)}</div>
+
+    <div class="rowcard">
+      <div class="rowhead">
+        <span class="label">${escapeHtml(row.label)}
+          ${row.rep ? `<span class="rep-flag">(${escapeHtml(row.rep.label)} ${row.rep.i}/${row.rep.total})</span>` : ""}
+        </span>
+        ${row.count !== null ? `<span class="count">${row.count} sts</span>` : ""}
+      </div>
+      ${row.color ? `<div class="color-strip"><span class="dot" style="background:${row.color.hex}"></span>${escapeHtml(row.color.tag)} &middot; ${escapeHtml(row.color.name)}</div>` : ""}
+      <div class="steps">${stepsHtml}</div>
+      ${row.note ? `<div class="note">${escapeHtml(row.note)}</div>` : ""}
+    </div>
+
+    ${peekHtml}
+
+    <div class="controls">
+      <button class="btn" onclick="undo()">Undo</button>
+      <button class="btn primary" onclick="advance();persist();render();">Skip row</button>
+    </div>
+
+    <div class="counters">${countersHtml}</div>
+    <p class="small">Screen stays awake after your first tap. Your place is saved on this device.</p>
+  `;
+}
+
+function resetSection() {
+  const start = sectionStarts[flat[state.pos].section];
+  jumpTo(start);
+}
+
+function renderDone() {
+  app.innerHTML = `<div class="done-screen">
+    <h2>Project complete</h2>
+    <p>${escapeHtml(PATTERN.project)} is finished.</p>
+    <button class="btn primary" onclick="jumpTo(0)">Start over</button>
+  </div>`;
+}
+
+// Translate knitting abbreviations to plain English.
+// Ordered: multi-letter terms first so they win over single letters.
+const GLOSSARY = [
+  [/\bM1L\b/gi, "make 1 left"],
+  [/\bM1R\b/gi, "make 1 right"],
+  [/\bm1\b/gi, "make 1"],
+  [/\bk2tog\b/gi, "knit 2 together"],
+  [/\bp2tog\b/gi, "purl 2 together"],
+  [/\bssk\b/gi, "slip slip knit"],
+  [/\bkfb\b/gi, "knit front and back"],
+  [/\byo\b/gi, "yarn over"],
+  [/\bpsso\b/gi, "pass slipped stitch over"],
+  [/\btbl\b/gi, "through back loop"],
+  [/\bwyib\b/gi, "with yarn in back"],
+  [/\bwyif\b/gi, "with yarn in front"],
+  [/\bslm\b/gi, "slip marker"],
+  [/\bsl(\d+)\b/gi, "slip $1"],
+  [/\bsl\b/gi, "slip"],
+  [/\bpm\b/gi, "place marker"],
+  [/\bCO\b/g, "cast on"],
+  [/\bBO\b/g, "bind off"],
+  [/\bk(\d+)\b/gi, "knit $1"],
+  [/\bp(\d+)\b/gi, "purl $1"],
+  [/\bk\b/gi, "knit"],
+  [/\bp\b/gi, "purl"],
+  [/\bsts\b/gi, "stitches"],
+  [/\bst\b/gi, "stitch"],
+  [/\bm\b/g, "marker"],
+  [/\bRS\b/g, "right side"],
+  [/\bWS\b/g, "wrong side"]
+];
+function plain(text) {
+  let t = text;
+  GLOSSARY.forEach(([re, rep]) => { t = t.replace(re, rep); });
+  return t;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+render();
+</script>
+</body>
+</html>
